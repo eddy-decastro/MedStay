@@ -49,27 +49,25 @@ quantifiée, une prédiction est inutilisable pour une décision clinique.
 ```
                     ┌─────────────────────────────┐
                     │   GitHub repo (public)      │
-                    │  push main ──► CI/CD        │
-                    └──────────┬──────────────────┘
-                               │ GitHub Actions
-                 lint + tests + build + deploy auto
-                               │
-                               ▼
-              ┌────────────────────────────────────┐
-              │   Hugging Face Space (Docker)      │
-              │                                    │
-              │  ┌───────────┐  HTTP  ┌─────────┐  │
-              │  │ Streamlit │ ─────► │ FastAPI │  │
-              │  │ port 7860 │        │ port    │  │
-              │  │ (exposé)  │ ◄───── │ 8000    │  │
-              │  └───────────┘  JSON  └────┬────┘  │
-              │       lancés par start.sh  │       │
-              │                     ┌──────▼─────┐ │
-              │                     │ Artefacts  │ │
-              │                     │ LGBM q05/95│ │
-              │                     │ + MAPIE CQR│ │
-              │                     └────────────┘ │
-              └────────────────────────────────────┘
+                    │  push main                  │
+                    └──────┬───────────────┬──────┘
+                           │               │ webhook push
+              GitHub Actions CI            ▼  (auto-deploy natif)
+           lint + tests + build   ┌────────────────────────────────────┐
+              (garde-fou)         │   Render web service (Docker)      │
+                                  │                                    │
+                                  │  ┌───────────┐  HTTP  ┌─────────┐  │
+                                  │  │ Streamlit │ ─────► │ FastAPI │  │
+                                  │  │  $PORT    │        │ port    │  │
+                                  │  │ (exposé)  │ ◄───── │ 8000    │  │
+                                  │  └───────────┘  JSON  └────┬────┘  │
+                                  │       lancés par start.sh  │       │
+                                  │                     ┌──────▼─────┐ │
+                                  │                     │ Artefacts  │ │
+                                  │                     │ LGBM q05/95│ │
+                                  │                     │ + MAPIE CQR│ │
+                                  │                     └────────────┘ │
+                                  └────────────────────────────────────┘
 
 Hors runtime (local) :
 UCI CSV ─► preprocess ─► split 60/20/20 ─► LGBM quantiles (train)
@@ -79,7 +77,7 @@ UCI CSV ─► preprocess ─► split 60/20/20 ─► LGBM quantiles (train)
 Règles :
 - Le front ne charge jamais le modèle : il appelle l'API.
 - L'entraînement est hors ligne ; seule l'inférence est déployée.
-- Un seul Space HF, deux processus (`start.sh` : uvicorn 8000 interne + Streamlit 7860 exposé).
+- Un seul service Render, deux processus (`start.sh` : uvicorn 8000 interne + Streamlit `$PORT` exposé).
 
 ## 6. API (FastAPI + Pydantic v2)
 
@@ -111,13 +109,16 @@ Règles :
 ## 9. CI/CD (GitHub Actions) — construit par incréments
 
 - `ci.yml` (push + PR) : ruff check/format → pytest + couverture → docker build (sans push).
-- `deploy.yml` (push main, après CI verte) : push vers le Space HF via secret `HF_TOKEN`.
-- Incréments : (1) ruff seul → (2) + pytest → (3) + build → (4) + deploy. Vert avant d'empiler.
+- Déploiement : auto-deploy natif Render (webhook sur push `main`). Pas de `deploy.yml` ni de
+  secret `HF_TOKEN` : Render reconstruit l'image à partir du `Dockerfile` du repo.
+- Incréments : (1) ruff seul → (2) + pytest → (3) + build. Vert avant d'empiler ; le déploiement
+  est délégué à Render, pas à GitHub Actions.
 - Badges README : CI, couverture, lien démo.
 
 ## 10. Contrainte de coût : 100 % gratuit
 
-- **Production : Hugging Face Spaces uniquement** (CPU basic, 0 €, sans limite de durée).
+- **Production : Render free tier uniquement** (web service Docker, 0 €). Tradeoff assumé :
+  le service s'endort après ~15 min d'inactivité → cold start ~30-50 s au premier appel.
 - **AWS : documenté, jamais exécuté.** Free tier post-juillet 2025 = 200 $ / 6 mois puis frais.
   Dossier `infra/` : Dockerfile compatible App Runner + Terraform commenté, avec note README
   expliquant ce choix délibéré (raisonnement d'ingénieur, pas une lacune).
@@ -135,7 +136,7 @@ Règles :
 ## 12. Livrables finaux
 
 - Dépôt GitHub public structuré, historique de commits propre, tag `v1.0.0`.
-- Démo publique HF Spaces (lien) + GIF 15–20 s pour LinkedIn.
+- Démo publique Render (lien) + GIF 15–20 s pour LinkedIn.
 - README : démo, problème métier, pourquoi le conformal, schéma d'architecture, résultats
   chiffrés, **section "Limites connues"** (dataset 1999–2008 ; couverture marginale et non
   conditionnelle ; pas de validation clinique ; hypothèse d'échangeabilité discutable en
@@ -146,7 +147,7 @@ Règles :
 
 > Application MLOps end-to-end de prédiction de durée de séjour hospitalier avec intervalles
 > de confiance garantis (Conformal Prediction, MAPIE) — FastAPI, Docker, GitHub Actions,
-> déployée sur HF Spaces. Couverture empirique validée à 90 % sur ~20 000 patients de test.
+> déployée sur Render. Couverture empirique validée à 90 % sur ~20 000 patients de test.
 
 ## 14. Priorités si le temps manque
 

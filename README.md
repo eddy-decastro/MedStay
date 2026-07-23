@@ -2,7 +2,7 @@
 
 Prédiction de durée de séjour hospitalier (patients diabétiques) avec intervalles de
 prédiction garantis à 90 % par Conformalized Quantile Regression (CQR), servie par une
-API FastAPI conteneurisée et déployée automatiquement sur Hugging Face Spaces.
+API FastAPI conteneurisée et déployée automatiquement sur Render.
 
 Projet d'apprentissage (élève-ingénieur maths appliquées), 40 % stats/ML — 60 %
 ingénierie/MLOps. Voir [docs/SPEC.md](docs/SPEC.md) pour l'énoncé complet et

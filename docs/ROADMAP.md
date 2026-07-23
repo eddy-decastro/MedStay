@@ -24,10 +24,10 @@ Principe directeur : **déployer tôt, enrichir ensuite.** Lien public dès la p
 - [ ] `src/api/main.py` : `GET /health` + `POST /predict` FACTICE (renvoie un intervalle codé
       en dur au bon format JSON)
 - [ ] `app/streamlit_app.py` minimal : un bouton qui appelle l'API et affiche la réponse
-- [ ] `start.sh` : uvicorn (port 8000, arrière-plan) + streamlit (port 7860)
-- [ ] Dockerfile SIMPLE (~10 lignes, pas de multi-stage ici), EXPOSE 7860
+- [ ] `start.sh` : uvicorn (port 8000, arrière-plan) + streamlit (port `$PORT`, fallback 7860 local)
+- [ ] Dockerfile SIMPLE (~10 lignes, pas de multi-stage ici), EXPOSE 7860 (informatif)
 - [ ] Test local : `docker build` + `docker run -p 7860:7860` → l'UI répond
-- [ ] Créer le Space HF (SDK Docker) à la main, push manuel → **lien public fonctionnel**
+- [ ] Créer le web service Render (type Docker, repo GitHub connecté) → **lien public fonctionnel**
 
 ## Phase 2 — CI/CD précoce (3 j, GitHub Actions découvert ici)
 
@@ -35,9 +35,10 @@ Construire par incréments, chaque étape verte avant la suivante :
 - [ ] (1) `ci.yml` : ruff check seul
 - [ ] (2) + pytest sur 2 tests triviaux (health → 200, predict factice → schéma OK)
 - [ ] (3) + docker build (sans push)
-- [ ] (4) `deploy.yml` : push auto vers le Space HF sur main (secret `HF_TOKEN`)
+- [ ] Déploiement : brancher l'auto-deploy natif Render sur `main` (pas de `deploy.yml`,
+      pas de `HF_TOKEN` ; Render écoute le webhook GitHub et reconstruit l'image)
 - [ ] Badges CI + démo dans le README
-- [ ] Vérifier la chaîne complète : un push modifie le Space en ligne sans action manuelle
+- [ ] Vérifier la chaîne complète : un push redéploie le service Render sans action manuelle
 
 ## Phase 3 — Données (4 j)
 
@@ -112,7 +113,7 @@ Construire par incréments, chaque étape verte avant la suivante :
 
 | Fin de semaine | État attendu |
 |---|---|
-| S1 | Lien public HF en ligne (API factice) + CI/CD complet vert |
+| S1 | Lien public Render en ligne (API factice) + CI/CD complet vert |
 | S3 | Modèle réel calibré branché sur l'API, validation de couverture faite |
 | S5 | API définitive testée + front complet |
 | S6–S8 | README, GIF, tag v1.0.0, post LinkedIn |
