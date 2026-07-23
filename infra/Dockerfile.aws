@@ -12,6 +12,9 @@ RUN pip install --user --no-cache-dir -r requirements.txt
 
 FROM python:3.11-slim
 
+# libgomp1 : exige par LightGBM, absent de python:3.11-slim (voir Dockerfile).
+RUN apt-get update \n    && apt-get install -y --no-install-recommends libgomp1 \n    && rm -rf /var/lib/apt/lists/*
+
 RUN useradd --create-home --shell /bin/bash medstay
 WORKDIR /app
 

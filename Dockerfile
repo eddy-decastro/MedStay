@@ -30,6 +30,20 @@ RUN pip install --no-cache-dir -r requirements.txt
 # ============================================================================
 FROM python:3.11-slim
 
+# libgomp1 : bibliotheque OpenMP de GNU, exigee par LightGBM pour son calcul
+# multi-thread. python:3.11-slim ne l'embarque pas, et son absence ne se voit
+# qu'au CHARGEMENT du modele :
+#     OSError: libgomp.so.1: cannot open shared object file
+# L'image se construit sans erreur, elle plante au demarrage. C'est le piege
+# classique de LightGBM en conteneur slim.
+#
+# rm -rf /var/lib/apt/lists/* dans la MEME instruction RUN : dans une couche
+# separee, les fichiers resteraient dans l'historique de l'image malgre la
+# suppression.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Utilisateur NON-ROOT. Si l'application est compromise, l'attaquant n'obtient
 # pas les droits administrateur du conteneur. C'est la mesure de securite la
 # plus rentable d'un Dockerfile.
