@@ -100,8 +100,26 @@ jobs:
       - name: Verifier que le conteneur repond
         run: |
           docker run -d --name medstay-ci -e PORT=7860 -p 7860:7860 medstay:ci
-          # Boucle d'attente : le conteneur met quelques secondes a demarrer.
-          # "curl --retry-connrefused" reessaie tant que le port est ferme.
-          curl --retry 12 --retry-delay 5 --retry-connrefused --fail --silent \
+
+          # Attente active du demarrage de Streamlit.
+          # ATTENTION : avec -p, docker-proxy ecoute sur le port hote des le
+          # "docker run". La connexion est donc ACCEPTEE puis reinitialisee
+          # tant que l'app n'ecoute pas dans le conteneur : curl recoit une
+          # reponse vide (52) ou un reset (56), jamais un "connection refused".
+          # --retry-connrefused ne couvre pas ces cas, --retry-all-errors si.
+          curl --retry 12 --retry-delay 5 --retry-all-errors --fail --silent \
                --output /dev/null http://localhost:7860
-          docker rm -f medstay-ci
+
+          # L'API n'est pas exposee hors du conteneur : on l'interroge depuis
+          # l'interieur. C'est le vrai test de la chaine (start.sh a bien
+          # lance les DEUX process).
+          docker exec medstay-ci python -c "import urllib.request; \
+            assert urllib.request.urlopen('http://localhost:8000/health').read() == b'{\"status\":\"ok\"}'"
+
+      # "if: always()" force ce step meme si le precedent a echoue : sans lui,
+      # un echec laisserait le conteneur tourner et on perdrait ses logs.
+      - name: Logs du conteneur et nettoyage
+        if: always()
+        run: |
+          docker logs medstay-ci || true
+          docker rm -f medstay-ci || true
