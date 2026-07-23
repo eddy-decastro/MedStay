@@ -40,6 +40,12 @@ RUN useradd --create-home --shell /bin/bash medstay
 COPY --from=builder /opt/venv /opt/venv
 
 ENV PATH="/opt/venv/bin:$PATH" \
+    # HOME defini EXPLICITEMENT : l'instruction USER de Docker ne le fait pas de
+    # maniere fiable. Sans cela HOME reste /root, dossier que l'utilisateur
+    # medstay ne peut pas ecrire -- et Streamlit, qui ecrit sa configuration
+    # dans ~/.streamlit, refuse alors de demarrer. Le port expose ne repond
+    # jamais, sans message d'erreur evident.
+    HOME=/home/medstay \
     # Pas de fichiers .pyc ecrits dans le conteneur.
     PYTHONDONTWRITEBYTECODE=1 \
     # Logs emis immediatement au lieu d'etre tamponnes : sans cela les journaux
