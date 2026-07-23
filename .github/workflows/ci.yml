@@ -148,9 +148,16 @@ jobs:
 
           # L'API n'est pas exposee hors du conteneur : on l'interroge depuis
           # l'interieur. C'est le vrai test de la chaine (start.sh a bien lance
-          # les DEUX process).
-          docker exec medstay-ci python -c "import urllib.request; \
-            assert urllib.request.urlopen('http://localhost:8000/health').read() == b'{\"status\":\"ok\"}'"
+          # les DEUX process). On verifie le CONTENU (pas juste le code 200),
+          # sans figer le JSON entier : le schema HealthOutput s'est enrichi
+          # depuis la phase 1 (ajout de model_loaded), un test sur l'egalite
+          # stricte de l'ancien JSON cassait pour de mauvaises raisons.
+          docker exec medstay-ci python -c "
+          import json, urllib.request
+          corps = json.loads(urllib.request.urlopen('http://localhost:8000/health').read())
+          assert corps['status'] == 'ok'
+          assert corps['model_loaded'] is True
+          "
 
           # Prediction reelle de bout en bout : verifie que le modele repond et
           # que l'intervalle est coherent (lower <= point <= upper).
@@ -174,8 +181,6 @@ jobs:
 
       # "if: always()" force ce step meme si le precedent a echoue : sans lui,
       # un echec laisserait le conteneur tourner et on perdrait ses logs.
-      # "if: always()" force ce step meme si le precedent a echoue : sans lui, un
-      # echec laisserait le conteneur tourner et on perdrait ses logs.
       #
       # Les logs sont AUSSI emis en annotation GitHub : contrairement aux logs
       # de job, les annotations sont lisibles via l'API publique, ce qui permet
