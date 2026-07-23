@@ -1,0 +1,11 @@
+# Dependances d'EXPLORATION uniquement (EDA, notebooks, figures).
+# Volontairement SEPAREES de requirements.txt : ce dernier definit l'image
+# Docker de production, qui n'a aucun besoin de jupyter ni de matplotlib
+# (les figures de la phase 5 sont generees hors ligne et servies en PNG).
+#
+# Installation : uv pip install -r requirements.txt -r requirements-dev.txt
+
+matplotlib==3.11.1
+seaborn==0.13.2
+jupyterlab==4.6.2
+nbformat==5.10.4
