@@ -101,20 +101,56 @@ jobs:
         run: |
           docker run -d --name medstay-ci -e PORT=7860 -p 7860:7860 medstay:ci
 
-          # Attente active du demarrage de Streamlit.
-          # ATTENTION : avec -p, docker-proxy ecoute sur le port hote des le
-          # "docker run". La connexion est donc ACCEPTEE puis reinitialisee
-          # tant que l'app n'ecoute pas dans le conteneur : curl recoit une
-          # reponse vide (52) ou un reset (56), jamais un "connection refused".
-          # --retry-connrefused ne couvre pas ces cas, --retry-all-errors si.
+          # On attend d'abord le HEALTHCHECK du conteneur, qui interroge l'API
+          # interne. Le demarrage complet (chargement du modele LightGBM puis
+          # boot de Streamlit) depasse regulierement une minute sur un runner
+          # partage : un budget de retry trop court faisait echouer la CI alors
+          # que le conteneur finissait par se lancer correctement.
+          echo "Attente du HEALTHCHECK (max 180 s)..."
+          for i in $(seq 1 36); do
+            ETAT=$(docker inspect medstay-ci --format '{{.State.Health.Status}}')
+            echo "  ${i}/36 : $ETAT"
+            [ "$ETAT" = "healthy" ] && break
+            # Inutile de patienter si le conteneur s'est arrete.
+            [ "$(docker inspect medstay-ci --format '{{.State.Status}}')" != "running" ] && break
+            sleep 5
+          done
+
+          docker inspect medstay-ci --format '{{.State.Health.Status}}' | grep -q healthy
+
+          # Streamlit, sur le port expose. --retry-all-errors et non
+          # --retry-connrefused : avec -p, docker-proxy accepte la connexion des
+          # le "docker run" puis la reinitialise tant que l'application n'ecoute
+          # pas. curl recoit alors une reponse vide (52) ou un reset (56),
+          # jamais un ECONNREFUSED, que --retry-connrefused seul ne couvre pas.
           curl --retry 12 --retry-delay 5 --retry-all-errors --fail --silent \
                --output /dev/null http://localhost:7860
 
           # L'API n'est pas exposee hors du conteneur : on l'interroge depuis
-          # l'interieur. C'est le vrai test de la chaine (start.sh a bien
-          # lance les DEUX process).
+          # l'interieur. C'est le vrai test de la chaine (start.sh a bien lance
+          # les DEUX process).
           docker exec medstay-ci python -c "import urllib.request; \
             assert urllib.request.urlopen('http://localhost:8000/health').read() == b'{\"status\":\"ok\"}'"
+
+          # Prediction reelle de bout en bout : verifie que le modele repond et
+          # que l'intervalle est coherent (lower <= point <= upper).
+          docker exec medstay-ci python -c "
+          import json, urllib.request
+          patient = {'race':'Caucasian','gender':'Female','age':'[70-80)',
+                     'admission_type_id':'1','admission_source_id':'7',
+                     'payer_code':'MC','medical_specialty':'InternalMedicine',
+                     'diag_1':'Circulatory','diag_2':'Diabetes','diag_3':'Circulatory',
+                     'max_glu_serum':'not_measured','A1Cresult':'>8',
+                     'number_outpatient':0,'number_emergency':1,
+                     'number_inpatient':2,'number_diagnoses':9}
+          req = urllib.request.Request('http://localhost:8000/predict',
+                                       data=json.dumps(patient).encode(),
+                                       headers={'Content-Type':'application/json'})
+          r = json.loads(urllib.request.urlopen(req).read())
+          print('prediction :', r)
+          assert r['lower_bound'] <= r['point_estimate'] <= r['upper_bound']
+          assert r['interval_width'] > 0
+          "
 
       # "if: always()" force ce step meme si le precedent a echoue : sans lui,
       # un echec laisserait le conteneur tourner et on perdrait ses logs.
