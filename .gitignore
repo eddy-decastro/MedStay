@@ -10,6 +10,8 @@ __pycache__/
 .ruff_cache/
 .pytest_cache/
 *.egg-info/
+.coverage
+htmlcov/
 
 # Données (téléchargées par script, jamais commitées)
 data/raw/
