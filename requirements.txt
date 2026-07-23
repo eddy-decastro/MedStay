@@ -3,7 +3,6 @@ uvicorn[standard]==0.34.0
 pydantic==2.10.4
 streamlit==1.41.1
 lightgbm==4.5.0
-mapie==0.9.1
 scikit-learn==1.6.0
 pandas==2.2.3
 numpy==2.2.1

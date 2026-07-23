@@ -19,6 +19,15 @@ PROCESSED_DATA_DIR = DATA_DIR / "processed"
 MODELS_DIR = ROOT_DIR / "models"
 FIGURES_DIR = ROOT_DIR / "reports" / "figures"
 
+# Chemins des artefacts, definis ICI et non dans les modules qui les produisent.
+# Raison : src/models/evaluate.py importe matplotlib, absent de requirements.txt
+# (dependance de dev). Si l'API importait ses constantes depuis evaluate.py,
+# elle planterait au demarrage sur Render. Les constantes partagees vivent donc
+# dans ce module, qui n'a aucune dependance lourde.
+MODEL_PATH = MODELS_DIR / "cqr_model.joblib"
+MODEL_METADATA_PATH = MODELS_DIR / "model_metadata.json"
+EVALUATION_REPORT_PATH = MODELS_DIR / "evaluation.json"
+
 # Quantiles des deux modeles encadrants. Choisis pour couvrir 1 - ALPHA = 90 %
 # AVANT calibration : MAPIE corrigera ensuite ces bornes pour garantir la
 # couverture reelle (les quantiles bruts d'un modele sont presque toujours

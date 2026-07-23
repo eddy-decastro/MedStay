@@ -1,0 +1,37 @@
+# Tout ce qui n'a rien a faire dans l'image de production.
+# Sans ce fichier, le COPY embarquerait .venv (plus de 1 Go) et data/ (20 Mo).
+
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Donnees : telechargees par script, jamais servies par l'API.
+data/
+
+# Exploration : notebooks et dependances de dev ne sont pas deployes.
+notebooks/
+requirements-dev.txt
+
+# Historique git et CI : inutiles au runtime.
+.git/
+.github/
+.gitignore
+.gitattributes
+
+# Tests : ils tournent en CI, pas dans l'image.
+tests/
+
+# Documentation et infrastructure non deployee.
+docs/
+infra/
+*.md
+
+# Environnements de developpement.
+.vscode/
+.idea/
+.claude/

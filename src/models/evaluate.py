@@ -29,15 +29,20 @@ import pandas as pd
 matplotlib.use("Agg")  # backend sans interface : indispensable hors notebook
 import matplotlib.pyplot as plt  # noqa: E402
 
-from src.config import ALPHA, FIGURES_DIR, MODELS_DIR  # noqa: E402
+from src.config import (  # noqa: E402
+    ALPHA,
+    EVALUATION_REPORT_PATH,
+    FIGURES_DIR,
+    MODELS_DIR,
+    MODEL_PATH,
+)
 from src.data.split import load_split  # noqa: E402
-from src.models.calibrate import MODEL_PATH  # noqa: E402
 from src.models.train import split_xy  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
-REPORT_PATH = MODELS_DIR / "evaluation.json"
+# Chemin defini dans config.py (voir la note qui l'accompagne).
 
 # Palette unique pour toutes les figures.
 BLEU, ROUGE, VERT, GRIS = "#2563eb", "#dc2626", "#059669", "#6b7280"
@@ -401,7 +406,7 @@ def main() -> None:
     rapport = evaluate()
 
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
-    REPORT_PATH.write_text(json.dumps(rapport, indent=2), encoding="utf-8")
+    EVALUATION_REPORT_PATH.write_text(json.dumps(rapport, indent=2), encoding="utf-8")
 
     g = rapport["global"]
     logger.info("")
@@ -413,7 +418,7 @@ def main() -> None:
         g["ecarts_types_a_la_cible"],
     )
     logger.info("Largeur moyenne    : %.2f jours", g["mean_width"])
-    logger.info("Rapport : %s", REPORT_PATH)
+    logger.info("Rapport : %s", EVALUATION_REPORT_PATH)
 
 
 if __name__ == "__main__":

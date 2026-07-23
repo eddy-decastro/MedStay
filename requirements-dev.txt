@@ -14,3 +14,9 @@ nbformat==5.10.4
 # justifie le choix de LightGBM. Jamais deploye : garder xgboost hors de
 # requirements.txt evite ~200 Mo inutiles dans l'image Render.
 xgboost==3.2.0
+
+# MAPIE ne sert qu'a l'ENTRAINEMENT (src/models/calibrate.py). L'artefact
+# exporte ne contient que des objets LightGBM : verifie en bloquant l'import de
+# mapie, l'API charge et predit sans lui. Le sortir de requirements.txt allege
+# l'image Render d'autant.
+mapie==0.9.1

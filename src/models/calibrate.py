@@ -34,7 +34,15 @@ import sklearn
 from lightgbm import LGBMRegressor
 from mapie.regression import MapieQuantileRegressor
 
-from src.config import ALPHA, LGBM_PARAMS, MODELS_DIR, QUANTILE_HIGH, QUANTILE_LOW
+from src.config import (
+    ALPHA,
+    LGBM_PARAMS,
+    MODEL_METADATA_PATH,
+    MODEL_PATH,
+    MODELS_DIR,
+    QUANTILE_HIGH,
+    QUANTILE_LOW,
+)
 from src.data.split import load_split
 from src.models.conformal import ConformalPredictor, FeatureSpec
 from src.models.train import split_xy
@@ -42,8 +50,8 @@ from src.models.train import split_xy
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
-MODEL_PATH = MODELS_DIR / "cqr_model.joblib"
-MODEL_METADATA_PATH = MODELS_DIR / "model_metadata.json"
+# Chemins definis dans config.py : l'API doit pouvoir les importer sans
+# tirer mapie ni matplotlib (absents de l'image de production).
 
 
 # Bornes physiologiques de la cible dans ce dataset : un sejour dure de 1 a
