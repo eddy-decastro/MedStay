@@ -123,3 +123,9 @@ jobs:
         run: |
           docker logs medstay-ci || true
           docker rm -f medstay-ci || true
+
+# --- DEPLOIEMENT ------------------------------------------------------------
+# Pas de job "deploy" ici : Render a sa propre option "Auto-Deploy: After CI
+# checks pass" qui ecoute directement les status checks GitHub (ces 3 jobs) et
+# ne deploie que s'ils sont tous verts. Meme garde-fou que "needs: [...]" +
+# Deploy Hook, en natif, sans secret a gerer cote GitHub.
