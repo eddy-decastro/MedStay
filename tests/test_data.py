@@ -3,7 +3,14 @@
 import pandas as pd
 import pytest
 
-from src.data.preprocess import DEATH_HOSPICE_CODES, TARGET, group_icd9, preprocess
+from src.data.preprocess import (
+    DRUG_COLS,
+    DURING_STAY_COLS,
+    POST_DISCHARGE_COLS,
+    TARGET,
+    group_icd9,
+    preprocess,
+)
 
 
 @pytest.fixture
@@ -135,10 +142,24 @@ def test_preprocess_garde_une_seule_admission_par_patient(raw_sample):
 
 
 def test_preprocess_exclut_les_deces(raw_sample):
-    """Aucun sejour termine par un deces ne doit survivre."""
+    """Le seul sejour termine par un deces (id 11) ne doit pas survivre."""
     out = preprocess(raw_sample.copy())
-    codes = out["discharge_disposition_id"].astype(int)
-    assert not codes.isin(DEATH_HOSPICE_CODES).any()
+    # discharge_disposition_id sert au filtrage puis est supprime (inconnu a
+    # l'admission) : on verifie l'exclusion par la duree propre a cette ligne.
+    assert 8 not in out[TARGET].to_numpy()
+
+
+def test_preprocess_ne_garde_aucune_variable_posterieure_a_l_admission(raw_sample):
+    """Verrou anti-fuite : le modele doit etre utilisable DES l'admission.
+
+    Ce test echoue si quelqu'un reintroduit une variable renseignee pendant ou
+    apres le sejour. Il protege le cas d'usage annonce dans la SPEC (anticiper
+    l'occupation des lits au moment ou le patient arrive).
+    """
+    out = preprocess(raw_sample.copy())
+    interdites = set(POST_DISCHARGE_COLS) | set(DURING_STAY_COLS) | set(DRUG_COLS)
+    fuites = interdites & set(out.columns)
+    assert not fuites, f"Variables non disponibles a l'admission : {sorted(fuites)}"
 
 
 def test_preprocess_supprime_identifiants_et_colonnes_inutiles(raw_sample):
@@ -149,16 +170,12 @@ def test_preprocess_supprime_identifiants_et_colonnes_inutiles(raw_sample):
 
 def test_preprocess_cree_les_features_derivees(raw_sample):
     out = preprocess(raw_sample.copy())
-    for col in [
-        "n_meds_changed",
-        "n_meds_active",
-        "procedures_per_diagnosis",
-        "n_prior_visits",
-    ]:
+    for col in ["n_prior_visits", "has_prior_inpatient", "diagnoses_per_prior_visit"]:
         assert col in out.columns
     # Bornes de coherence : ces compteurs ne peuvent pas etre negatifs.
-    assert (out["n_meds_changed"] >= 0).all()
-    assert (out["procedures_per_diagnosis"] >= 0).all()
+    assert (out["n_prior_visits"] >= 0).all()
+    assert (out["diagnoses_per_prior_visit"] >= 0).all()
+    assert out["has_prior_inpatient"].isin([0, 1]).all()
 
 
 def test_preprocess_encode_en_categoriel_pour_lightgbm(raw_sample):

@@ -101,8 +101,19 @@ docker build -t medstay . && docker run -p 7860:7860 medstay   # local : $PORT n
 
 ## Règles méthodologiques ML (à surveiller activement)
 
+- **RÈGLE TEMPORELLE (non négociable)** : ne garder que les variables connues À L'ADMISSION.
+  Le modèle sert à anticiper l'occupation des lits quand le patient arrive ; une variable
+  renseignée plus tard est inutilisable, même si elle améliore les métriques.
+  - Écartées car postérieures à la sortie : `discharge_disposition_id`, `readmitted`.
+  - Écartées car mesurées pendant le séjour : `num_medications` (r=+0,47), `num_lab_procedures`
+    (r=+0,33), `num_procedures`, `change`, `diabetesMed`, les 21 colonnes de médicaments.
+    Ces variables reflètent la durée plus qu'elles ne la prédisent.
+  - Coût assumé : 49 → 20 colonnes, métriques plus faibles, intervalles plus larges.
+  - Un test verrouille cette règle (`test_preprocess_ne_garde_aucune_variable_posterieure_a_l_admission`).
 - Doublons `patient_nbr` : garder la PREMIÈRE admission par patient (indépendance des
   observations, requise par l'hypothèse d'échangeabilité du conformal). Documenter dans le README.
+- Exclure les sorties par décès ou soins palliatifs (`discharge_disposition_id` ∈ {11,13,14,19,20,21},
+  2,4 % des lignes) : la durée y est déterminée par le décès, pas par la guérison.
 - `?` = valeur manquante. Décisions ARBITRÉES en EDA (voir `notebooks/01_eda.ipynb`) :
   - `weight` (96,9 % manquant) → drop.
   - `max_glu_serum` (94,8 %) / `A1Cresult` (83,3 %) → GARDER en `"not_measured"` : ce sont

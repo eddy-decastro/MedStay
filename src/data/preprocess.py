@@ -36,6 +36,38 @@ MOSTLY_MISSING = ["weight"]
 # Constantes sur tout le dataset (toujours "No") : variance nulle, zero information.
 CONSTANT_COLS = ["examide", "citoglipton"]
 
+# --- REGLE TEMPORELLE : ne garder que ce qui est connu A L'ADMISSION ---------
+#
+# Le modele doit servir a anticiper l'occupation des lits AU MOMENT ou le
+# patient arrive. Toute variable renseignee plus tard est inutilisable en
+# pratique, meme si elle ameliore les metriques : au moment de la prediction
+# elle n'existe pas encore.
+
+# Connues seulement APRES la sortie. Fuite non discutable.
+#   - discharge_disposition_id : mode de sortie du patient
+#   - readmitted : ce qui s'est passe APRES ce sejour (cible d'origine du
+#     dataset UCI, sans rapport avec notre tache)
+POST_DISCHARGE_COLS = ["discharge_disposition_id", "readmitted"]
+
+# Mesurees PENDANT le sejour. Ce sont les variables les plus correlees a la
+# cible (num_medications r=+0,47 ; num_lab_procedures r=+0,33), mais la
+# correlation est en grande partie inverse : un sejour long genere davantage de
+# prescriptions et d'analyses. Elles refletent la duree plus qu'elles ne la
+# predisent. Les garder donnerait de meilleures metriques et un modele
+# inutilisable a l'admission.
+DURING_STAY_COLS = [
+    "num_medications",
+    "num_lab_procedures",
+    "num_procedures",
+    # Posologie ajustee pendant le sejour ("Up"/"Down") : decision therapeutique
+    # prise apres l'admission. Nuance a connaitre : le fait qu'un patient soit
+    # DEJA sous traitement est, lui, connu a l'admission (conciliation
+    # medicamenteuse). Mais l'encodage du dataset confond traitement anterieur
+    # et instauration pendant le sejour -- indemelable, donc ecarte en bloc.
+    "change",
+    "diabetesMed",
+]
+
 # --- Exclusions de lignes ---------------------------------------------------
 
 # Codes discharge_disposition_id correspondant a un deces ou a des soins
@@ -83,9 +115,10 @@ DRUG_COLS = [
 # Identifiants administratifs codes en entiers : ce sont des CATEGORIES, pas des
 # quantites. Sans conversion explicite, LightGBM les traiterait comme numeriques
 # et pourrait inferer que "type 3 > type 1", ce qui n'a aucun sens.
+# discharge_disposition_id n'y figure pas : il sert au filtrage des deces
+# (etape 2) puis est supprime, car inconnu a l'admission.
 ID_CATEGORICAL_COLS = [
     "admission_type_id",
-    "discharge_disposition_id",
     "admission_source_id",
 ]
 
@@ -167,25 +200,23 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
     logger.info("Re-admissions ecartees : %d lignes", n - len(df))
 
     # --- 4. Features derivees ---------------------------------------------
-    # Construites AVANT le drop des colonnes sources.
-
-    # Nombre de traitements dont la posologie a ete modifiee pendant le sejour.
-    # Un ajustement therapeutique traduit une instabilite clinique, qu'aucune
-    # colonne ne capture directement.
-    df["n_meds_changed"] = (df[DRUG_COLS].isin(["Up", "Down"])).sum(axis=1)
-
-    # Nombre de traitements actifs (prescrits, quelle que soit l'evolution).
-    df["n_meds_active"] = (df[DRUG_COLS] != "No").sum(axis=1)
-
-    # Intensite des actes rapportee au nombre de diagnostics : distingue un
-    # patient lourdement investigue d'un patient simplement polypathologique.
-    # +1 au denominateur pour eviter la division par zero.
-    df["procedures_per_diagnosis"] = df["num_procedures"] / (df["number_diagnoses"] + 1)
+    # Seules des features construites a partir d'information disponible A
+    # L'ADMISSION sont autorisees (cf. regle temporelle en haut de fichier).
 
     # Historique de recours aux soins sur l'annee precedente, toutes voies
-    # confondues. Mesure AVANT le sejour, donc utilisable en prediction.
+    # confondues. Anterieur au sejour, donc pleinement utilisable.
     df["n_prior_visits"] = (
         df["number_outpatient"] + df["number_emergency"] + df["number_inpatient"]
+    )
+
+    # Le patient a-t-il deja ete hospitalise dans l'annee ? Une hospitalisation
+    # anterieure est un marqueur de fragilite plus net que le simple comptage.
+    df["has_prior_inpatient"] = (df["number_inpatient"] > 0).astype(int)
+
+    # Nombre de diagnostics rapporte au recours anterieur : distingue un patient
+    # polypathologique connu du systeme d'un patient polypathologique decouvert.
+    df["diagnoses_per_prior_visit"] = df["number_diagnoses"] / (
+        df["n_prior_visits"] + 1
     )
 
     # --- 5. Regroupement des diagnostics ICD-9 ----------------------------
@@ -201,7 +232,16 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
         df[col] = df[col].fillna("Unknown")
 
     # --- 7. Colonnes ecartees ---------------------------------------------
-    df = df.drop(columns=ID_COLS + MOSTLY_MISSING + CONSTANT_COLS)
+    # DRUG_COLS part en bloc : ces 21 colonnes encodent des ajustements de
+    # posologie decides pendant le sejour (cf. commentaire de DURING_STAY_COLS).
+    df = df.drop(
+        columns=ID_COLS
+        + MOSTLY_MISSING
+        + CONSTANT_COLS
+        + POST_DISCHARGE_COLS
+        + DURING_STAY_COLS
+        + DRUG_COLS
+    )
 
     # --- 8. Encodage categoriel natif LightGBM ----------------------------
     # dtype "category" plutot qu'un one-hot : LightGBM gere nativement les
