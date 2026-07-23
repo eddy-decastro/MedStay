@@ -2,13 +2,25 @@
 
 On verifie la STRUCTURE des pipelines, pas la performance des modeles : aucun
 entrainement lourd ici, la comparaison chiffree vit dans models/benchmark.json.
+
+Ce module est IGNORE quand xgboost est absent. C'est voulu : xgboost vit dans
+requirements-dev.txt et n'est pas installe en CI ni dans l'image Render, qui
+n'embarquent que requirements.txt. La CI teste ainsi exactement ce qui est
+deploye, sans tirer 200 Mo pour un modele qu'on ne sert jamais.
 """
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from src.models.benchmark import (
+# Doit preceder l'import de src.models.benchmark, qui importe xgboost au
+# niveau module : sans cela la collecte pytest echouerait au lieu de sauter.
+pytest.importorskip(
+    "xgboost",
+    reason="xgboost est une dependance de dev (requirements-dev.txt)",
+)
+
+from src.models.benchmark import (  # noqa: E402  (import apres importorskip)
     CATEGORICAL_NATIVE,
     build_models,
     build_onehot_preprocessor,
