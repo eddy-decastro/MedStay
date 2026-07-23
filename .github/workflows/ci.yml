@@ -106,17 +106,32 @@ jobs:
           # boot de Streamlit) depasse regulierement une minute sur un runner
           # partage : un budget de retry trop court faisait echouer la CI alors
           # que le conteneur finissait par se lancer correctement.
+          # ATTENTION : on utilise des "if" et non des chaines "test && break".
+          # Les blocs run de GitHub Actions s'executent avec "set -e" : une
+          # chaine "[ cond ] && cmd" dont le test est FAUX renvoie 1 et tue le
+          # script, alors meme que tout va bien. Piege deja rencontre ici.
           echo "Attente du HEALTHCHECK (max 180 s)..."
+          SANTE=starting
           for i in $(seq 1 36); do
-            ETAT=$(docker inspect medstay-ci --format '{{.State.Health.Status}}')
-            echo "  ${i}/36 : $ETAT"
-            [ "$ETAT" = "healthy" ] && break
+            SANTE=$(docker inspect medstay-ci --format '{{.State.Health.Status}}')
+            ETAT=$(docker inspect medstay-ci --format '{{.State.Status}}')
+            echo "  ${i}/36 : sante=$SANTE etat=$ETAT"
+
+            if [ "$SANTE" = "healthy" ]; then
+              break
+            fi
             # Inutile de patienter si le conteneur s'est arrete.
-            [ "$(docker inspect medstay-ci --format '{{.State.Status}}')" != "running" ] && break
+            if [ "$ETAT" != "running" ]; then
+              echo "Le conteneur n'est plus en cours d'execution." >&2
+              break
+            fi
             sleep 5
           done
 
-          docker inspect medstay-ci --format '{{.State.Health.Status}}' | grep -q healthy
+          if [ "$SANTE" != "healthy" ]; then
+            echo "HEALTHCHECK non atteint : $SANTE" >&2
+            exit 1
+          fi
 
           # Streamlit, sur le port expose. --retry-all-errors et non
           # --retry-connrefused : avec -p, docker-proxy accepte la connexion des
