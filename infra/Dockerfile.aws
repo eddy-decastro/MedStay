@@ -2,32 +2,43 @@
 #
 # Une seule difference de fond avec le Dockerfile racine : App Runner impose un
 # port FIXE (declare dans main.tf), alors que Render injecte $PORT au runtime.
-# Streamlit ecoute donc ici sur 8080 en dur.
+# On fige donc PORT=8080 dans l'environnement ; start.sh reste identique entre
+# les deux plateformes puisqu'il lit "${PORT:-7860}".
 
 FROM python:3.11-slim AS builder
 
+# venv a chemin absolu plutot que "pip install --user" : ce dernier depend de
+# HOME, que l'instruction USER de Docker ne redefinit pas de maniere fiable.
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
 WORKDIR /app
 COPY requirements.txt .
-RUN pip install --user --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 FROM python:3.11-slim
 
-# libgomp1 : exige par LightGBM, absent de python:3.11-slim (voir Dockerfile).
-RUN apt-get update \n    && apt-get install -y --no-install-recommends libgomp1 \n    && rm -rf /var/lib/apt/lists/*
+# libgomp1 : bibliotheque OpenMP exigee par LightGBM, absente de l'image slim.
+# Sans elle, l'image se construit mais plante au chargement du modele
+# (OSError: libgomp.so.1: cannot open shared object file).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN useradd --create-home --shell /bin/bash medstay
-WORKDIR /app
 
-COPY --from=builder /root/.local /home/medstay/.local
+COPY --from=builder /opt/venv /opt/venv
 
-ENV PATH=/home/medstay/.local/bin:$PATH \
+ENV PATH="/opt/venv/bin:$PATH" \
+    HOME=/home/medstay \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     STREAMLIT_SERVER_HEADLESS=true \
     STREAMLIT_BROWSER_GATHER_USAGE_STATS=false \
-    # Port fixe impose par App Runner, lu par start.sh comme s'il venait de
-    # Render : le script reste ainsi identique entre les deux plateformes.
+    # Port fixe impose par App Runner, la ou Render l'injecte au runtime.
     PORT=8080
+
+WORKDIR /app
 
 COPY --chown=medstay:medstay src/ ./src/
 COPY --chown=medstay:medstay app/ ./app/
