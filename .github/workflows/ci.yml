@@ -1,0 +1,51 @@
+# Nom affiche dans l'onglet "Actions" de GitHub.
+name: CI
+
+# --- DECLENCHEURS ---------------------------------------------------------
+# Quand ce workflow tourne. Ici : a chaque push, et a chaque pull request.
+# Le "push" couvre le flux solo (tu pushes sur master) ; le "pull_request"
+# servira si tu ouvres des PR plus tard.
+on:
+  push:
+  pull_request:
+
+# --- JOBS -----------------------------------------------------------------
+# Un workflow contient un ou plusieurs jobs. Chaque job = une VM neuve,
+# detruite a la fin. Les jobs tournent en parallele sauf dependance explicite.
+jobs:
+  lint:
+    # Image de la VM fournie par GitHub (gratuite sur repo public).
+    runs-on: ubuntu-latest
+
+    # Les steps s'executent dans l'ordre, sur la MEME VM.
+    # Si un step echoue, les suivants sont annules et le job est rouge.
+    steps:
+      # 1) La VM demarre vierge : il faut y cloner le repo, sinon il n'y a
+      #    rien a linter. "uses" = action reutilisable publiee par GitHub.
+      #    Le @v4 epingle la version majeure de l'action.
+      - uses: actions/checkout@v4
+
+      # 2) Installe l'interpreteur Python. On fixe 3.11 pour coller au
+      #    Dockerfile (python:3.11-slim) : la CI doit tester le meme runtime
+      #    que la prod, sinon elle valide autre chose que ce qui est deploye.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # 3) Incrément 1 : lint SEUL. On n'installe donc pas requirements.txt
+      #    (lightgbm, streamlit... ~300 Mo inutiles ici) : juste ruff.
+      #    Version EPINGLEE et identique au local : une version differente
+      #    peut appliquer d'autres regles et rendre la CI rouge alors que
+      #    ton local est vert.
+      - name: Installer ruff
+        run: pip install ruff==0.8.4
+
+      # 4) Les erreurs de lint (imports inutiles, variables mortes...).
+      - name: Lint (ruff check)
+        run: ruff check .
+
+      # 5) Le formatage. "--check" ne REECRIT rien : il echoue si un fichier
+      #    n'est pas au format attendu. En CI on verifie, on ne modifie jamais
+      #    le code (un runner ne doit pas pousser de commit tout seul).
+      - name: Format (ruff format --check)
+        run: ruff format --check .
