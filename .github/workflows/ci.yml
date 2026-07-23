@@ -49,3 +49,32 @@ jobs:
       #    le code (un runner ne doit pas pousser de commit tout seul).
       - name: Format (ruff format --check)
         run: ruff format --check .
+
+  # --- INCREMENT 2 : les tests -------------------------------------------
+  # Job SEPARE de "lint", donc VM distincte tournant EN PARALLELE. Avantages :
+  # retour plus rapide, et on voit d'un coup d'oeil si c'est le lint ou les
+  # tests qui cassent. Cout : cette VM reinstalle tout de son cote.
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          # Met en cache le dossier pip entre deux runs, en se basant sur le
+          # hash de requirements.txt. Tant que le fichier ne change pas, les
+          # dependances sont restaurees au lieu d'etre retelechargees.
+          cache: pip
+
+      # Ici on a besoin de tout requirements.txt : les tests importent
+      # src.api.main, donc fastapi, et TestClient a besoin de httpx.
+      - name: Installer les dependances
+        run: pip install -r requirements.txt
+
+      # --cov=src mesure la couverture du code de src/ (cible >= 70 % fixee en
+      # Phase 7). On ne fait que RAPPORTER pour l'instant : pas de seuil
+      # bloquant tant que src/ est quasi vide, sinon la CI casse pour rien.
+      - name: Tests (pytest + couverture)
+        run: pytest --cov=src --cov-report=term-missing
