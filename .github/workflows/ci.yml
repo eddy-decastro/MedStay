@@ -78,3 +78,30 @@ jobs:
       # bloquant tant que src/ est quasi vide, sinon la CI casse pour rien.
       - name: Tests (pytest + couverture)
         run: pytest --cov=src --cov-report=term-missing
+
+  # --- INCREMENT 3 : build de l'image ------------------------------------
+  # Render construit sa propre image a partir du Dockerfile. Ce job sert de
+  # garde-fou : si le Dockerfile casse, on le voit ici plutot qu'en prod.
+  # On BUILD seulement, sans push : aucun registre, donc aucun secret requis.
+  docker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Pas de setup-python ici : le runner ubuntu-latest a deja Docker
+      # installe, et l'image se construit dans son propre environnement.
+      - name: Build de l'image Docker
+        run: docker build -t medstay:ci .
+
+      # Verification minimale que l'image DEMARRE vraiment : une image qui se
+      # construit peut tres bien crasher au lancement (mauvais CMD, shebang
+      # CRLF...). On lance le conteneur, on interroge /health, on nettoie.
+      - name: Verifier que le conteneur repond
+        run: |
+          docker run -d --name medstay-ci -e PORT=7860 -p 7860:7860 medstay:ci
+          # Boucle d'attente : le conteneur met quelques secondes a demarrer.
+          # "curl --retry-connrefused" reessaie tant que le port est ferme.
+          curl --retry 12 --retry-delay 5 --retry-connrefused --fail --silent \
+               --output /dev/null http://localhost:7860
+          docker rm -f medstay-ci
