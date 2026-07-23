@@ -103,8 +103,17 @@ docker build -t medstay . && docker run -p 7860:7860 medstay   # local : $PORT n
 
 - Doublons `patient_nbr` : garder la PREMIÈRE admission par patient (indépendance des
   observations, requise par l'hypothèse d'échangeabilité du conformal). Documenter dans le README.
-- `?` = valeur manquante. Drop `weight` (~97 % manquant) ; `payer_code` et `medical_specialty`
-  à évaluer pendant l'EDA.
+- `?` = valeur manquante. Décisions ARBITRÉES en EDA (voir `notebooks/01_eda.ipynb`) :
+  - `weight` (96,9 % manquant) → drop.
+  - `max_glu_serum` (94,8 %) / `A1Cresult` (83,3 %) → GARDER en `"not_measured"` : ce sont
+    des tests non effectués, pas des manquants. La décision de doser est un signal clinique.
+  - `medical_specialty` (49,1 %) → garder, manquants en `"Unknown"`. Signal le plus fort
+    du dataset (3,1 j en gynéco vs 6,4 j en psychiatrie).
+  - `payer_code` (39,6 %) → GARDER. Le droper ne supprimerait pas l'inégalité d'accès aux
+    soins, cela la rendrait invisible (le modèle la reconstruirait via des proxys). On la
+    conserve et on vérifie la couverture par catégorie d'assurance en phase 5.
+  - Piège : 1 645 codes ICD-9 commencent par V ou E (non numériques) → tout regroupement
+    faisant `float(code)` plantera.
 - Regrouper `diag_1/2/3` (codes ICD-9) en catégories cliniques larges (circulatoire,
   respiratoire, digestif, diabète, blessure, musculosquelettique, génito-urinaire, néoplasmes, autre).
 - Encodage : ordinal/natif pour LightGBM (pas de one-hot massif).
