@@ -36,6 +36,7 @@ from mapie.regression import MapieQuantileRegressor
 
 from src.config import ALPHA, LGBM_PARAMS, MODELS_DIR, QUANTILE_HIGH, QUANTILE_LOW
 from src.data.split import load_split
+from src.models.conformal import ConformalPredictor, FeatureSpec
 from src.models.train import split_xy
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -109,6 +110,23 @@ def build_quantile_estimator() -> LGBMRegressor:
     return LGBMRegressor(objective="quantile", alpha=0.5, **LGBM_PARAMS)
 
 
+def build_feature_spec(X: pd.DataFrame) -> FeatureSpec:
+    """Fige le schema d'entrainement pour que l'API reconstruise le bon DataFrame.
+
+    Sans cela, un DataFrame construit depuis du JSON n'aurait ni le bon ordre de
+    colonnes, ni les memes categories : LightGBM produirait des predictions
+    silencieusement fausses, sans lever la moindre erreur.
+    """
+    categorielles = X.select_dtypes(include="category").columns
+    return FeatureSpec(
+        columns=list(X.columns),
+        categories={
+            col: [str(c) for c in X[col].cat.categories] for col in categorielles
+        },
+        numeric=list(X.select_dtypes(exclude="category").columns),
+    )
+
+
 def calibrate() -> tuple[MapieQuantileRegressor, dict]:
     """Entraine les modeles quantiles et les calibre par CQR."""
     splits = load_split()
@@ -174,16 +192,43 @@ def calibrate() -> tuple[MapieQuantileRegressor, dict]:
     return model, metadata
 
 
+def build_predictor(
+    model: MapieQuantileRegressor, X_train: pd.DataFrame, metadata: dict
+) -> ConformalPredictor:
+    """Extrait de MAPIE un predicteur autonome a niveau de confiance libre.
+
+    On ne deploie pas l'objet MAPIE tel quel : il fige alpha a l'entrainement,
+    alors que la SPEC demande un curseur de confiance. ConformalPredictor
+    conserve les trois modeles quantiles et les scores de conformite, ce qui
+    suffit a recalculer la marge pour n'importe quel alpha (voir conformal.py).
+    """
+    # estimators_ : [0] quantile bas, [1] quantile haut, [2] mediane.
+    # conformity_scores_ : ligne 2 = max(bas, haut), le score CQR.
+    scores = np.asarray(model.conformity_scores_)[2]
+
+    return ConformalPredictor(
+        model_low=model.estimators_[0],
+        model_high=model.estimators_[1],
+        model_median=model.estimators_[2],
+        conformity_scores=scores,
+        feature_spec=build_feature_spec(X_train),
+        metadata=metadata,
+    )
+
+
 def main() -> None:
     """Calibre le modele et exporte l'artefact deploye par l'API."""
     model, metadata = calibrate()
 
+    X_train, _ = split_xy(load_split()["train"])
+    predictor = build_predictor(model, X_train, metadata)
+
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
-    joblib.dump(model, MODEL_PATH)
+    joblib.dump(predictor, MODEL_PATH)
     MODEL_METADATA_PATH.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
 
     taille_mo = MODEL_PATH.stat().st_size / 1e6
-    logger.info("Modele CQR : %s (%.2f Mo)", MODEL_PATH, taille_mo)
+    logger.info("Predicteur conforme : %s (%.2f Mo)", MODEL_PATH, taille_mo)
     logger.info("Metadonnees : %s", MODEL_METADATA_PATH)
 
 

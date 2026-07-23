@@ -1,0 +1,347 @@
+{
+  "evaluated_at": "2026-07-23T11:55:35+00:00",
+  "alpha": 0.1,
+  "global": {
+    "n_test": 13998,
+    "target_coverage": 0.9,
+    "empirical_coverage": 0.9021,
+    "standard_error": 0.00254,
+    "ecarts_types_a_la_cible": 0.84,
+    "mean_width": 8.079,
+    "median_width": 8.411,
+    "min_width": 1.131,
+    "max_width": 12.98,
+    "figure": "reports/figures/01_couverture_et_largeur.png"
+  },
+  "sous_groupes": {
+    "par_variable": {
+      "age": [
+        {
+          "modalite": "[30-40)",
+          "n": 559,
+          "couverture": 0.8801,
+          "largeur": 6.702
+        },
+        {
+          "modalite": "[10-20)",
+          "n": 101,
+          "couverture": 0.8812,
+          "largeur": 4.7237
+        },
+        {
+          "modalite": "[80-90)",
+          "n": 2125,
+          "couverture": 0.8932,
+          "largeur": 8.8126
+        },
+        {
+          "modalite": "[70-80)",
+          "n": 3565,
+          "couverture": 0.8973,
+          "largeur": 8.375
+        },
+        {
+          "modalite": "[60-70)",
+          "n": 3169,
+          "couverture": 0.9015,
+          "largeur": 8.1362
+        },
+        {
+          "modalite": "[40-50)",
+          "n": 1420,
+          "couverture": 0.912,
+          "largeur": 7.618
+        },
+        {
+          "modalite": "[50-60)",
+          "n": 2397,
+          "couverture": 0.9145,
+          "largeur": 7.7614
+        },
+        {
+          "modalite": "[20-30)",
+          "n": 246,
+          "couverture": 0.9187,
+          "largeur": 6.4107
+        },
+        {
+          "modalite": "[90-100)",
+          "n": 380,
+          "couverture": 0.9211,
+          "largeur": 8.8524
+        }
+      ],
+      "admission_type_id": [
+        {
+          "modalite": "6",
+          "n": 854,
+          "couverture": 0.8806,
+          "largeur": 8.2173
+        },
+        {
+          "modalite": "5",
+          "n": 601,
+          "couverture": 0.8885,
+          "largeur": 6.9481
+        },
+        {
+          "modalite": "2",
+          "n": 2548,
+          "couverture": 0.8952,
+          "largeur": 8.3566
+        },
+        {
+          "modalite": "3",
+          "n": 2824,
+          "couverture": 0.9033,
+          "largeur": 7.4311
+        },
+        {
+          "modalite": "1",
+          "n": 7116,
+          "couverture": 0.9084,
+          "largeur": 8.3206
+        }
+      ],
+      "payer_code": [
+        {
+          "modalite": "UN",
+          "n": 396,
+          "couverture": 0.8636,
+          "largeur": 7.1665
+        },
+        {
+          "modalite": "CM",
+          "n": 261,
+          "couverture": 0.8966,
+          "largeur": 7.829
+        },
+        {
+          "modalite": "MC",
+          "n": 3901,
+          "couverture": 0.8975,
+          "largeur": 8.2774
+        },
+        {
+          "modalite": "Unknown",
+          "n": 6070,
+          "couverture": 0.9041,
+          "largeur": 8.4728
+        },
+        {
+          "modalite": "HM",
+          "n": 820,
+          "couverture": 0.9061,
+          "largeur": 7.0214
+        },
+        {
+          "modalite": "MD",
+          "n": 415,
+          "couverture": 0.9084,
+          "largeur": 8.572
+        },
+        {
+          "modalite": "BC",
+          "n": 687,
+          "couverture": 0.9127,
+          "largeur": 6.8341
+        },
+        {
+          "modalite": "CP",
+          "n": 401,
+          "couverture": 0.9127,
+          "largeur": 7.1526
+        },
+        {
+          "modalite": "SP",
+          "n": 666,
+          "couverture": 0.9159,
+          "largeur": 7.2896
+        },
+        {
+          "modalite": "OG",
+          "n": 137,
+          "couverture": 0.927,
+          "largeur": 7.2755
+        }
+      ]
+    },
+    "couverture_min": 0.8636,
+    "couverture_max": 0.927,
+    "ecart_max": 0.0634,
+    "figure": "reports/figures/02_couverture_par_sous_groupe.png"
+  },
+  "couverture_vs_alpha": {
+    "points": [
+      {
+        "alpha": 0.01,
+        "cible": 0.99,
+        "mesuree": 0.9901,
+        "largeur": 11.141
+      },
+      {
+        "alpha": 0.02,
+        "cible": 0.98,
+        "mesuree": 0.9809,
+        "largeur": 10.408
+      },
+      {
+        "alpha": 0.05,
+        "cible": 0.95,
+        "mesuree": 0.9519,
+        "largeur": 8.729
+      },
+      {
+        "alpha": 0.08,
+        "cible": 0.92,
+        "mesuree": 0.9231,
+        "largeur": 8.15
+      },
+      {
+        "alpha": 0.1,
+        "cible": 0.9,
+        "mesuree": 0.9021,
+        "largeur": 8.079
+      },
+      {
+        "alpha": 0.15,
+        "cible": 0.85,
+        "mesuree": 0.8556,
+        "largeur": 8.057
+      },
+      {
+        "alpha": 0.2,
+        "cible": 0.8,
+        "mesuree": 0.8007,
+        "largeur": 8.042
+      },
+      {
+        "alpha": 0.25,
+        "cible": 0.75,
+        "mesuree": 0.7509,
+        "largeur": 6.462
+      },
+      {
+        "alpha": 0.3,
+        "cible": 0.7,
+        "mesuree": 0.7001,
+        "largeur": 6.126
+      },
+      {
+        "alpha": 0.4,
+        "cible": 0.6,
+        "mesuree": 0.6022,
+        "largeur": 6.053
+      },
+      {
+        "alpha": 0.5,
+        "cible": 0.5,
+        "mesuree": 0.5084,
+        "largeur": 4.329
+      }
+    ],
+    "ecart_absolu_moyen": 0.0024,
+    "ecart_absolu_max": 0.0084,
+    "figure": "reports/figures/03_couverture_vs_alpha.png"
+  },
+  "calibre_vs_non_calibre": {
+    "non_calibre": {
+      "couverture": 0.8736,
+      "largeur": 8.059
+    },
+    "calibre": {
+      "couverture": 0.9021,
+      "largeur": 8.079
+    },
+    "figure": "reports/figures/04_calibre_vs_non_calibre.png"
+  },
+  "adaptativite": {
+    "par_duree_reelle": [
+      {
+        "duree": 1,
+        "n": 2094,
+        "largeur": 7.04,
+        "couverture": 0.7636
+      },
+      {
+        "duree": 2,
+        "n": 2437,
+        "largeur": 7.497,
+        "couverture": 1.0
+      },
+      {
+        "duree": 3,
+        "n": 2499,
+        "largeur": 7.806,
+        "couverture": 0.9988
+      },
+      {
+        "duree": 4,
+        "n": 1885,
+        "largeur": 8.114,
+        "couverture": 0.9936
+      },
+      {
+        "duree": 5,
+        "n": 1340,
+        "largeur": 8.445,
+        "couverture": 0.9888
+      },
+      {
+        "duree": 6,
+        "n": 1010,
+        "largeur": 8.676,
+        "couverture": 0.9772
+      },
+      {
+        "duree": 7,
+        "n": 781,
+        "largeur": 8.908,
+        "couverture": 0.9449
+      },
+      {
+        "duree": 8,
+        "n": 568,
+        "largeur": 9.035,
+        "couverture": 0.8856
+      },
+      {
+        "duree": 9,
+        "n": 382,
+        "largeur": 9.317,
+        "couverture": 0.8403
+      },
+      {
+        "duree": 10,
+        "n": 301,
+        "largeur": 9.396,
+        "couverture": 0.6777
+      },
+      {
+        "duree": 11,
+        "n": 238,
+        "largeur": 9.517,
+        "couverture": 0.4244
+      },
+      {
+        "duree": 12,
+        "n": 183,
+        "largeur": 9.474,
+        "couverture": 0.1858
+      },
+      {
+        "duree": 13,
+        "n": 152,
+        "largeur": 9.58,
+        "couverture": 0.0461
+      },
+      {
+        "duree": 14,
+        "n": 128,
+        "largeur": 9.917,
+        "couverture": 0.0234
+      }
+    ],
+    "figure": "reports/figures/05_adaptativite.png"
+  }
+}

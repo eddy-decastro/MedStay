@@ -249,7 +249,13 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
     # medical_specialty (72 modalites) creerait 72 colonnes creuses et
     # degraderait la qualite des splits.
     for col in ID_CATEGORICAL_COLS:
-        df[col] = df[col].astype("category")
+        # astype(str) AVANT category : ces identifiants sont des entiers, et
+        # LightGBM memorise les valeurs des categories pour les remapper a la
+        # prediction. Une categorie entiere ne correspondrait alors pas a la
+        # chaine "1" recue en JSON par l'API -- sans erreur levee, mais avec des
+        # predictions fausses (bug reellement rencontre : 4,45 j contre 4,77 j).
+        # Tout homogeneiser en chaines supprime cette classe de bugs.
+        df[col] = df[col].astype(str).astype("category")
 
     for col in df.select_dtypes(include="object").columns:
         df[col] = df[col].astype("category")
