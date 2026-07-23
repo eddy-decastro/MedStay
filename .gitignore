@@ -17,6 +17,15 @@ htmlcov/
 data/raw/
 data/processed/
 
+# Artefacts intermédiaires régénérables par script (1,1 Mo par réentraînement
+# sinon ajoutés définitivement à l'historique git).
+# Le modèle DÉPLOYÉ, lui, sera versionné : sans registre de modèles (contrainte
+# 0 €), git est le seul canal qui achemine l'artefact jusqu'à Render.
+models/baseline_l2.joblib
+
+# Figures régénérables par src/models/evaluate.py
+reports/figures/
+
 # Notebooks checkpoints
 .ipynb_checkpoints/
 

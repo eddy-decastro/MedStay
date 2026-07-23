@@ -1,0 +1,47 @@
+{
+  "trained_at": "2026-07-23T11:26:05+00:00",
+  "n_train": 41991,
+  "n_features": 19,
+  "cv_folds": 5,
+  "evaluated_on": "cross-validation sur le train (calibration et test intouches)",
+  "naive_median": {
+    "mae": {
+      "mean": 2.2202620686452055,
+      "std": 0.033435607885383384
+    },
+    "rmse": {
+      "mean": 3.198687213911659,
+      "std": 0.054371608050029774
+    },
+    "r2": {
+      "mean": -0.18851624836374015,
+      "std": 0.005145546507835941
+    }
+  },
+  "lightgbm_l2": {
+    "mae": {
+      "mean": 2.0569374987787943,
+      "std": 0.03388702402916174
+    },
+    "rmse": {
+      "mean": 2.6914187229875717,
+      "std": 0.04776296343153299
+    },
+    "r2": {
+      "mean": 0.158514234238632,
+      "std": 0.011032637153910658
+    }
+  },
+  "params": {
+    "n_estimators": 400,
+    "learning_rate": 0.05,
+    "num_leaves": 31,
+    "min_child_samples": 40,
+    "subsample": 0.8,
+    "subsample_freq": 1,
+    "colsample_bytree": 0.8,
+    "random_state": 42,
+    "n_jobs": -1,
+    "verbose": -1
+  }
+}
