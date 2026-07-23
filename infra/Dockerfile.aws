@@ -1,0 +1,43 @@
+# Variante du Dockerfile pour AWS App Runner. NON UTILISEE : voir infra/README.md.
+#
+# Une seule difference de fond avec le Dockerfile racine : App Runner impose un
+# port FIXE (declare dans main.tf), alors que Render injecte $PORT au runtime.
+# Streamlit ecoute donc ici sur 8080 en dur.
+
+FROM python:3.11-slim AS builder
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --user --no-cache-dir -r requirements.txt
+
+FROM python:3.11-slim
+
+RUN useradd --create-home --shell /bin/bash medstay
+WORKDIR /app
+
+COPY --from=builder /root/.local /home/medstay/.local
+
+ENV PATH=/home/medstay/.local/bin:$PATH \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    STREAMLIT_SERVER_HEADLESS=true \
+    STREAMLIT_BROWSER_GATHER_USAGE_STATS=false \
+    # Port fixe impose par App Runner, lu par start.sh comme s'il venait de
+    # Render : le script reste ainsi identique entre les deux plateformes.
+    PORT=8080
+
+COPY --chown=medstay:medstay src/ ./src/
+COPY --chown=medstay:medstay app/ ./app/
+COPY --chown=medstay:medstay models/ ./models/
+COPY --chown=medstay:medstay reports/ ./reports/
+COPY --chown=medstay:medstay start.sh ./
+
+RUN chmod +x start.sh
+USER medstay
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+
+CMD ["./start.sh"]

@@ -1,5 +1,9 @@
 """Tests du post-traitement des intervalles conformes.
 
+Importe src.models.conformal et NON src.models.calibrate : ce dernier importe
+mapie, absent de requirements.txt (dependance d'entrainement). La CI n'installe
+que les dependances de production, donc ces tests doivent tourner sans mapie.
+
 Les proprietes verifiees ici sont celles exigees par la SPEC :
 lower <= point <= upper, largeur > 0, bornes dans les limites physiologiques.
 """
@@ -7,7 +11,7 @@ lower <= point <= upper, largeur > 0, bornes dans les limites physiologiques.
 import numpy as np
 import pytest
 
-from src.models.calibrate import TARGET_MAX, TARGET_MIN, postprocess
+from src.models.conformal import TARGET_MAX, TARGET_MIN, postprocess
 
 
 def test_bornes_ramenees_dans_les_limites_physiologiques():

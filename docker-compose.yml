@@ -1,0 +1,28 @@
+# Lancement local en une commande : docker compose up
+#
+# Un SEUL service, identique a la production : start.sh lance uvicorn (interne,
+# 8000) et Streamlit (expose). Deux services separes seraient plus "propres" en
+# theorie, mais ne refleteraient plus ce qui tourne reellement sur Render --
+# et un environnement local qui ment sur la production ne sert a rien.
+
+services:
+  medstay:
+    build: .
+    ports:
+      # 7860 sur l'hote -> 7860 dans le conteneur. En local $PORT n'est pas
+      # defini, start.sh retombe donc sur 7860 (voir "${PORT:-7860}").
+      - "7860:7860"
+    environment:
+      # Simule l'injection de port que fait Render en production.
+      - PORT=7860
+    healthcheck:
+      # Interroge l'API interne, pas Streamlit : c'est elle qui porte le modele.
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      # Laisse 40 s au conteneur pour demarrer avant de compter les echecs
+      # (chargement du modele + demarrage de Streamlit).
+      start_period: 40s
+      retries: 3
+    restart: unless-stopped

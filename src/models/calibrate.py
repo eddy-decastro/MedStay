@@ -44,7 +44,7 @@ from src.config import (
     QUANTILE_LOW,
 )
 from src.data.split import load_split
-from src.models.conformal import ConformalPredictor, FeatureSpec
+from src.models.conformal import ConformalPredictor, FeatureSpec, postprocess
 from src.models.train import split_xy
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -52,50 +52,6 @@ logger = logging.getLogger(__name__)
 
 # Chemins definis dans config.py : l'API doit pouvoir les importer sans
 # tirer mapie ni matplotlib (absents de l'image de production).
-
-
-# Bornes physiologiques de la cible dans ce dataset : un sejour dure de 1 a
-# 14 jours par construction (au-dela, le dataset agrege a 14).
-TARGET_MIN = 1.0
-TARGET_MAX = 14.0
-
-
-def postprocess(
-    point: np.ndarray, low: np.ndarray, high: np.ndarray
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Rend les predictions coherentes : bornes dans [1, 14] et point dedans.
-
-    Corrige deux defauts observes sur les sorties brutes de MAPIE :
-
-    1. 57,9 % des bornes basses tombaient sous 1 jour et 0,16 % des bornes
-       hautes depassaient 14, alors que la cible est bornee par construction.
-       Tronquer a [1, 14] NE PEUT JAMAIS FAIRE BAISSER LA COUVERTURE : la vraie
-       valeur etant toujours dans [1, 14], si elle etait dans l'intervalle
-       d'origine elle reste dans l'intervalle tronque. La garantie conforme est
-       donc preservee, avec des intervalles plus serres.
-
-       Cas limite : un intervalle situe ENTIEREMENT hors de [1, 14] (ex.
-       [-3 ; 0,5]) devient degenere sur la borne ([1 ; 1]) et peut se mettre a
-       couvrir y = 1. La couverture peut donc augmenter. La propriete exacte
-       est une inegalite, pas une egalite -- meme si sur ce modele l'egalite
-       est observee (0,928294 avant et apres), aucun intervalle ne tombant
-       entierement hors des bornes.
-
-    2. 0,3 % des estimations ponctuelles tombaient HORS de leur propre
-       intervalle. Les trois quantiles sont appris independamment et la
-       correction conforme decale les bornes sans decaler la mediane : rien ne
-       garantit leur ordre. Annoncer "4,2 jours, intervalle [4,5 ; 9]" serait
-       incoherent pour l'utilisateur. On ramene donc le point dans ses bornes.
-    """
-    low = np.clip(low, TARGET_MIN, TARGET_MAX)
-    high = np.clip(high, TARGET_MIN, TARGET_MAX)
-
-    # Garde-fou : si les deux quantiles se croisent malgre tout, on retablit
-    # l'ordre plutot que de renvoyer un intervalle vide.
-    low, high = np.minimum(low, high), np.maximum(low, high)
-
-    point = np.clip(point, low, high)
-    return point, low, high
 
 
 def predict_intervals(

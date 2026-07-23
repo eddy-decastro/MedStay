@@ -2,21 +2,28 @@
 # tout dans une seule image ; ici on separe la CONSTRUCTION de l'EXECUTION.
 #
 # Interet : pip, ses caches et ses outils de compilation restent dans l'etage
-# "builder" et ne sont jamais copies dans l'image finale. Seules les
-# bibliotheques installees le sont.
+# "builder" et ne sont jamais copies dans l'image finale.
 
 # ============================================================================
 # ETAGE 1 : builder -- installe les dependances, puis sera jete
 # ============================================================================
 FROM python:3.11-slim AS builder
 
+# Environnement virtuel dans un chemin ABSOLU et neutre.
+# On prefere cela a "pip install --user" : ce dernier installe dans ~/.local,
+# donc dans un dossier qui depend de la variable HOME. Or l'instruction USER de
+# Docker ne redefinit pas HOME de maniere fiable -- Python cherche alors ses
+# paquets au mauvais endroit et l'import echoue, alors meme que PATH semble
+# correct. Un venv a chemin fixe elimine ce piege.
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
 WORKDIR /app
 
-# --user installe dans /root/.local, un dossier unique et facile a copier
-# ensuite dans l'image finale. --no-cache-dir evite de conserver les archives
-# telechargees (~100 Mo inutiles).
+# requirements.txt copie SEUL et en premier : tant que ce fichier ne change pas,
+# Docker reutilise le cache de cette couche et ne reinstalle rien.
 COPY requirements.txt .
-RUN pip install --user --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # ============================================================================
 # ETAGE 2 : runtime -- l'image reellement deployee
@@ -28,23 +35,22 @@ FROM python:3.11-slim
 # plus rentable d'un Dockerfile.
 RUN useradd --create-home --shell /bin/bash medstay
 
-WORKDIR /app
+# On recupere UNIQUEMENT l'environnement virtuel : ni pip, ni ses caches, ni
+# les outils de compilation de l'etage precedent.
+COPY --from=builder /opt/venv /opt/venv
 
-# On recupere UNIQUEMENT les bibliotheques installees a l'etage precedent.
-# pip lui-meme, ses caches et les outils de build restent derriere.
-COPY --from=builder /root/.local /home/medstay/.local
-
-# Les executables installes avec --user (uvicorn, streamlit) vivent la.
-ENV PATH=/home/medstay/.local/bin:$PATH \
-    # Evite l'ecriture de fichiers .pyc dans le conteneur.
+ENV PATH="/opt/venv/bin:$PATH" \
+    # Pas de fichiers .pyc ecrits dans le conteneur.
     PYTHONDONTWRITEBYTECODE=1 \
-    # Affiche les logs immediatement au lieu de les tamponner : sans cela les
-    # journaux Render arrivent par blocs, voire disparaissent en cas de crash.
+    # Logs emis immediatement au lieu d'etre tamponnes : sans cela les journaux
+    # Render arrivent par blocs, voire disparaissent en cas de crash.
     PYTHONUNBUFFERED=1 \
-    # Streamlit ne cherche pas a ouvrir de navigateur ni a collecter de
+    # Streamlit ne cherche ni a ouvrir un navigateur ni a collecter de
     # statistiques d'usage dans un conteneur.
     STREAMLIT_SERVER_HEADLESS=true \
     STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+
+WORKDIR /app
 
 # --chown evite un chmod ulterieur : les fichiers appartiennent directement au
 # bon utilisateur.
@@ -61,9 +67,9 @@ USER medstay
 # Informatif : Render route le trafic via $PORT. Utile au `docker run -p` local.
 EXPOSE 7860
 
-# Sonde de sante interrogeant l'API interne. Docker marque le conteneur
-# "unhealthy" si elle echoue 3 fois de suite. --start-period laisse 40 s de
-# demarrage avant de commencer a compter les echecs (chargement du modele).
+# Sonde de sante interrogeant l'API INTERNE : c'est elle qui porte le modele.
+# --start-period laisse 40 s de demarrage (chargement du modele) avant de
+# commencer a compter les echecs.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 

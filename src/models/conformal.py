@@ -84,6 +84,46 @@ class FeatureSpec:
         return df
 
 
+def postprocess(
+    point: np.ndarray, low: np.ndarray, high: np.ndarray
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Rend les sorties coherentes : bornes dans [1, 14] et point dedans.
+
+    Deux defauts mesures sur les sorties brutes des modeles :
+
+    1. 57,9 % des bornes basses tombaient sous 1 jour et 0,16 % des hautes
+       au-dessus de 14, alors que la cible est bornee par construction.
+       Tronquer NE PEUT JAMAIS FAIRE BAISSER LA COUVERTURE : la vraie valeur
+       etant toujours dans [1, 14], si elle appartenait a l'intervalle
+       d'origine elle appartient encore a l'intervalle tronque. La garantie
+       conforme est donc preservee, avec des intervalles plus serres.
+
+       Cas limite : un intervalle situe ENTIEREMENT hors de [1, 14] devient
+       degenere sur la borne et peut se mettre a couvrir. La couverture peut
+       donc AUGMENTER -- la propriete exacte est une inegalite, pas une
+       egalite. Sur ce modele l'egalite est observee (0,928294 avant et
+       apres), aucun intervalle ne tombant entierement hors bornes.
+
+    2. 0,3 % des estimations ponctuelles sortaient de leur propre intervalle :
+       les trois quantiles sont appris independamment et la correction conforme
+       decale les bornes sans decaler la mediane. Annoncer
+       "0,86 jour, intervalle [0,99 ; 5,70]" serait incoherent.
+
+    Cette fonction vit dans conformal.py et NON dans calibrate.py : ce dernier
+    importe mapie, absent de l'image de production. L'API doit pouvoir
+    l'utiliser sans tirer les dependances d'entrainement.
+    """
+    low = np.clip(low, TARGET_MIN, TARGET_MAX)
+    high = np.clip(high, TARGET_MIN, TARGET_MAX)
+
+    # Garde-fou : si les quantiles se croisent, on retablit l'ordre plutot que
+    # de renvoyer un intervalle vide.
+    low, high = np.minimum(low, high), np.maximum(low, high)
+
+    point = np.clip(point, low, high)
+    return point, low, high
+
+
 class ConformalPredictor:
     """Intervalles de prediction conformes, a niveau de confiance parametrable."""
 
@@ -132,30 +172,4 @@ class ConformalPredictor:
         low = np.asarray(self.model_low.predict(X), dtype=float) - marge
         high = np.asarray(self.model_high.predict(X), dtype=float) + marge
 
-        return self._postprocess(point, low, high)
-
-    @staticmethod
-    def _postprocess(
-        point: np.ndarray, low: np.ndarray, high: np.ndarray
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """Rend les sorties coherentes : bornes dans [1, 14] et point dedans.
-
-        Deux defauts mesures sur les sorties brutes :
-          - 57,9 % des bornes basses tombaient sous 1 jour, alors que la cible
-            est bornee par construction. Tronquer ne peut jamais FAIRE BAISSER
-            la couverture (y est toujours dans [1, 14]), donc la garantie est
-            preservee et les intervalles sont plus serres.
-          - 0,3 % des estimations ponctuelles sortaient de leur propre
-            intervalle : les trois quantiles sont appris independamment et la
-            correction conforme decale les bornes sans decaler la mediane.
-            Annoncer "0,86 jour, intervalle [0,99 ; 5,70]" serait incoherent.
-        """
-        low = np.clip(low, TARGET_MIN, TARGET_MAX)
-        high = np.clip(high, TARGET_MIN, TARGET_MAX)
-
-        # Garde-fou : les quantiles peuvent se croiser, on retablit l'ordre
-        # plutot que de renvoyer un intervalle vide.
-        low, high = np.minimum(low, high), np.maximum(low, high)
-
-        point = np.clip(point, low, high)
-        return point, low, high
+        return postprocess(point, low, high)
