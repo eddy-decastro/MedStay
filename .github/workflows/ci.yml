@@ -98,7 +98,12 @@ jobs:
       # construit peut tres bien crasher au lancement (mauvais CMD, shebang
       # CRLF...). On lance le conteneur, on interroge /health, on nettoie.
       - name: Verifier que le conteneur repond
+        # "set -x" trace chaque commande executee dans un fichier : precieux
+        # pour diagnostiquer un echec sans acces aux logs de job (qui exigent
+        # des droits d'administration sur le repo).
         run: |
+          exec > >(tee /tmp/verify.log) 2>&1
+          set -x
           docker run -d --name medstay-ci -e PORT=7860 -p 7860:7860 medstay:ci
 
           # On attend d'abord le HEALTHCHECK du conteneur, qui interroge l'API
@@ -189,6 +194,13 @@ jobs:
           # Les annotations n'acceptent pas de saut de ligne brut : %0A est
           # l'echappement attendu par GitHub Actions.
           echo "::error title=Conteneur ($ETAT)::$(echo "$LOGS" | sed ':a;N;$!ba;s/\n/%0A/g')"
+
+          # Trace complete du step precedent (set -x), pour voir EXACTEMENT
+          # quelle commande a fait echouer la boucle d'attente.
+          if [ -f /tmp/verify.log ]; then
+            TRACE=$(tail -60 /tmp/verify.log)
+            echo "::error title=Trace du step verify::$(echo "$TRACE" | sed ':a;N;$!ba;s/\n/%0A/g')"
+          fi
 
           docker rm -f medstay-ci || true
 
