@@ -9,3 +9,8 @@ matplotlib==3.11.1
 seaborn==0.13.2
 jupyterlab==4.6.2
 nbformat==5.10.4
+
+# Uniquement pour le benchmark comparatif (src/models/benchmark_mlp.py) qui
+# justifie le choix de LightGBM. Jamais deploye : garder xgboost hors de
+# requirements.txt evite ~200 Mo inutiles dans l'image Render.
+xgboost==3.2.0

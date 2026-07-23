@@ -1,0 +1,89 @@
+{
+  "run_at": "2026-07-23T11:41:37+00:00",
+  "protocol": "validation croisee 5 folds sur le train uniquement",
+  "n_train": 41991,
+  "n_features_native": 19,
+  "n_features_after_onehot": 175,
+  "results": {
+    "naive_median": {
+      "mae": {
+        "mean": 2.2202620686452055,
+        "std": 0.033435607885383384
+      },
+      "rmse": {
+        "mean": 3.198687213911659,
+        "std": 0.054371608050029774
+      },
+      "r2": {
+        "mean": -0.18851624836374015,
+        "std": 0.005145546507835941
+      },
+      "fit_seconds": 0.0,
+      "categorical_native": false
+    },
+    "lightgbm": {
+      "mae": {
+        "mean": 2.0569374987787943,
+        "std": 0.03388702402916174
+      },
+      "rmse": {
+        "mean": 2.6914187229875717,
+        "std": 0.04776296343153299
+      },
+      "r2": {
+        "mean": 0.158514234238632,
+        "std": 0.011032637153910658
+      },
+      "fit_seconds": 3.5,
+      "categorical_native": true
+    },
+    "xgboost": {
+      "mae": {
+        "mean": 2.0604252338409426,
+        "std": 0.03581871639301805
+      },
+      "rmse": {
+        "mean": 2.697066640853882,
+        "std": 0.04953384871720603
+      },
+      "r2": {
+        "mean": 0.15500041246414184,
+        "std": 0.010938390158221472
+      },
+      "fit_seconds": 3.9,
+      "categorical_native": true
+    },
+    "random_forest": {
+      "mae": {
+        "mean": 2.1311827885261025,
+        "std": 0.029674908631099357
+      },
+      "rmse": {
+        "mean": 2.754365335177151,
+        "std": 0.048358504775550364
+      },
+      "r2": {
+        "mean": 0.11873341836166032,
+        "std": 0.0073039074547244015
+      },
+      "fit_seconds": 5.4,
+      "categorical_native": false
+    },
+    "mlp": {
+      "mae": {
+        "mean": 2.0831393913537335,
+        "std": 0.03841456320909467
+      },
+      "rmse": {
+        "mean": 2.717135165180596,
+        "std": 0.048500573791068306
+      },
+      "r2": {
+        "mean": 0.14236848774217437,
+        "std": 0.010615555113481235
+      },
+      "fit_seconds": 18.1,
+      "categorical_native": false
+    }
+  }
+}
