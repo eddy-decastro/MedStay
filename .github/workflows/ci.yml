@@ -118,10 +118,27 @@ jobs:
 
       # "if: always()" force ce step meme si le precedent a echoue : sans lui,
       # un echec laisserait le conteneur tourner et on perdrait ses logs.
+      # "if: always()" force ce step meme si le precedent a echoue : sans lui, un
+      # echec laisserait le conteneur tourner et on perdrait ses logs.
+      #
+      # Les logs sont AUSSI emis en annotation GitHub : contrairement aux logs
+      # de job, les annotations sont lisibles via l'API publique, ce qui permet
+      # de diagnostiquer un echec sans se connecter a l'interface.
       - name: Logs du conteneur et nettoyage
         if: always()
         run: |
-          docker logs medstay-ci || true
+          echo "--- etat du conteneur ---"
+          docker ps -a --filter name=medstay-ci --format '{{.Status}}' || true
+
+          ETAT=$(docker inspect medstay-ci --format '{{.State.Status}} exit={{.State.ExitCode}}' 2>/dev/null || echo inconnu)
+          LOGS=$(docker logs medstay-ci 2>&1 | tail -30 || echo "aucun log")
+
+          echo "$LOGS"
+
+          # Les annotations n'acceptent pas de saut de ligne brut : %0A est
+          # l'echappement attendu par GitHub Actions.
+          echo "::error title=Conteneur ($ETAT)::$(echo "$LOGS" | sed ':a;N;$!ba;s/\n/%0A/g')"
+
           docker rm -f medstay-ci || true
 
 # --- DEPLOIEMENT ------------------------------------------------------------
