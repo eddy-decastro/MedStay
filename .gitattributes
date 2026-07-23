@@ -1,0 +1,7 @@
+# Force LF sur les scripts shell : un start.sh en CRLF casse le shebang
+# (#!/bin/sh\r introuvable) dans le conteneur Linux Render.
+*.sh text eol=lf
+Dockerfile text eol=lf
+
+# Normalisation par defaut pour le reste (LF dans le repo, natif au checkout).
+* text=auto
